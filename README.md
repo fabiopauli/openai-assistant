@@ -18,8 +18,8 @@ Horizon Assistant provides:
 
 ## Key Features
 
-- **OpenAI API Integration:** Uses OpenAI SDK to interact with OpenAI-compatible models (default: `gpt-4.1-mini` /reasoner: `gpt-4.1`).
-- **Large Context Window:** Up to 128k tokens for conversations and file contexts.
+- **OpenAI API Integration:** Uses OpenAI SDK to interact with OpenAI-compatible models (default: `gpt-4.1-mini` /reasoner: `gpt-5-mini`).
+- **Large Context Window:** Up to 256k tokens for conversations and file contexts.
 - **Interactive CLI:** Rich UI with autocompletion, color, and tables.
 - **File Operations:** Read, create, edit files and directories, with fuzzy matching and size-aware context management.
 - **Git Operations:** Initialize, stage, commit, branch, and status commands, with staging checks and context awareness.

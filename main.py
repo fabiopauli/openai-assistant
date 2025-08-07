@@ -41,7 +41,7 @@ from utils import (
     validate_tool_calls, get_prompt_indicator, normalize_path, is_binary_file,
     read_local_file, add_file_context_smartly, find_best_matching_file,
     apply_fuzzy_diff_edit, run_bash_command, run_powershell_command,
-    get_directory_tree_summary
+    get_directory_tree_summary, process_deferred_file_contexts
 )
 
 # Initialize OpenAI client
@@ -519,9 +519,7 @@ def try_handle_r1_command(user_input: str, conversation_history: List[Dict[str, 
                     model=REASONER_MODEL,
                     input=input_messages,
                     tools=tools,
-                    temperature=0.7,
                     max_output_tokens=5000,
-                    top_p=1,
                     store=True
                 )
 
@@ -558,58 +556,41 @@ def try_handle_r1_command(user_input: str, conversation_history: List[Dict[str, 
 
         # Process tool calls if they exist and we have a valid response
         if response is not None and valid_tool_calls:
-            full_response_content = response.output_text if hasattr(response, 'output_text') else ""
-            accumulated_tool_calls = []
-            if hasattr(response, 'output') and response.output:
-                for output_item in response.output:
-                    if hasattr(output_item, 'type') and output_item.type == "function_call":
-                        accumulated_tool_calls.append({
-                            "id": output_item.call_id,
-                            "type": "function",
-                            "function": {
-                                "name": output_item.name,
-                                "arguments": output_item.arguments
-                            }
-                        })
-            console.print("[bold bright_magenta]🌅 Horizon:[/bold bright_magenta] ", end="")
-            if full_response_content:
-                clean_content = full_response_content.replace("<think>", "").replace("</think>", "")
-                console.print(clean_content, style="bright_magenta")
-            else:
-                console.print("[dim]Processing tool calls...[/dim]", style="bright_magenta")
-            conversation_history.append({"role": "user", "content": user_prompt})
-            assistant_message = {"role": "assistant", "content": full_response_content}
-            valid_tool_calls = validate_tool_calls(accumulated_tool_calls)
             # --- Loop prevention logic ---
             max_tool_calls = 3
             tool_call_count = 0
             executed_tool_ids = set()
-            if valid_tool_calls:
-                assistant_message["tool_calls"] = valid_tool_calls
-                console.print("[dim]Note: R1 reasoner made tool calls. Executing...[/dim]")
-                for tool_call in valid_tool_calls:
-                    if tool_call_count >= max_tool_calls:
-                        console.print("[yellow]⚠ Tool call limit reached for this /r invocation. Stopping further execution.[/yellow]")
-                        break
-                    tool_id = tool_call.get("id")
-                    if tool_id in executed_tool_ids:
-                        console.print(f"[yellow]⚠ Duplicate tool call detected (id: {tool_id}). Skipping.[/yellow]")
-                        continue
-                    try:
-                        result = execute_function_call_dict(tool_call)
-                        tool_response = {
-                            "role": "tool",
-                            "name": tool_call["function"]["name"],
-                            "content": str(result),
-                            "tool_call_id": tool_id
-                        }
-                        conversation_history.append(tool_response)
-                        executed_tool_ids.add(tool_id)
-                        tool_call_count += 1
-                    except Exception as e:
-                        console.print(f"[red]✗ R1 tool call error: {e}[/red]")
+            
+            assistant_message["tool_calls"] = valid_tool_calls
             conversation_history.append(assistant_message)
-            return True
+            console.print("[dim]Note: R1 reasoner made tool calls. Executing...[/dim]")
+            
+            for tool_call in valid_tool_calls:
+                if tool_call_count >= max_tool_calls:
+                    console.print("[yellow]⚠ Tool call limit reached for this /r invocation. Stopping further execution.[/yellow]")
+                    break
+                tool_id = tool_call.get("id")
+                if tool_id in executed_tool_ids:
+                    console.print(f"[yellow]⚠ Duplicate tool call detected (id: {tool_id}). Skipping.[/yellow]")
+                    continue
+                try:
+                    result = execute_function_call_dict(tool_call)
+                    tool_response = {
+                        "role": "tool",
+                        "name": tool_call["function"]["name"],
+                        "content": str(result),
+                        "tool_call_id": tool_id
+                    }
+                    conversation_history.append(tool_response)
+                    executed_tool_ids.add(tool_id)
+                    tool_call_count += 1
+                except Exception as e:
+                    console.print(f"[red]✗ R1 tool call error: {e}[/red]")
+        else:
+            # No tool calls, just add the assistant message
+            conversation_history.append(assistant_message)
+        
+        return True
     
     return False
 
@@ -1523,15 +1504,25 @@ def main_loop() -> None:
                             "content": msg["content"]
                         })
 
-                    response = client.responses.create(
-                        model=current_model,
-                        input=input_messages,
-                        tools=tools,
-                        temperature=0.7,
-                        max_output_tokens=5000,
-                        top_p=1,
-                        store=True
-                    )
+                    # Use temperature only for non-reasoner models
+                    if current_model == REASONER_MODEL:
+                        response = client.responses.create(
+                            model=current_model,
+                            input=input_messages,
+                            tools=tools,
+                            max_output_tokens=5000,
+                            store=True
+                        )
+                    else:
+                        response = client.responses.create(
+                            model=current_model,
+                            input=input_messages,
+                            tools=tools,
+                            temperature=0.7,
+                            max_output_tokens=5000,
+                            top_p=1,
+                            store=True
+                        )
 
                 # Process responses API output only if we have a valid response
                 if response is not None:
@@ -1621,15 +1612,25 @@ def main_loop() -> None:
                                 "content": msg["content"]
                             })
 
-                        continue_response = client.responses.create(
-                            model=current_model,
-                            input=input_messages,
-                            tools=tools,
-                            temperature=0.7,
-                            max_output_tokens=5000,
-                            top_p=1,
-                            store=True
-                        )
+                        # Use temperature only for non-reasoner models
+                        if current_model == REASONER_MODEL:
+                            continue_response = client.responses.create(
+                                model=current_model,
+                                input=input_messages,
+                                tools=tools,
+                                max_output_tokens=5000,
+                                store=True
+                            )
+                        else:
+                            continue_response = client.responses.create(
+                                model=current_model,
+                                input=input_messages,
+                                tools=tools,
+                                temperature=0.7,
+                                max_output_tokens=5000,
+                                top_p=1,
+                                store=True
+                            )
 
                     # Process the continuation response
                     continuation_content = continue_response.output_text if hasattr(continue_response, 'output_text') else ""
@@ -1711,6 +1712,12 @@ def main_loop() -> None:
                 # If we hit the max rounds, warn about it
                 if current_round >= max_continuation_rounds:
                     console.print(f"[yellow]⚠ Reached maximum continuation rounds ({max_continuation_rounds}). Conversation continues.[/yellow]")
+            
+                # Process any deferred file contexts now that tool calls are complete
+                process_deferred_file_contexts(conversation_history)
+            else:
+                # No tool calls were made, process deferred file contexts immediately
+                process_deferred_file_contexts(conversation_history)
             
             # Smart truncation that preserves tool call sequences
             conversation_history = smart_truncate_history(conversation_history, model_name=current_model)

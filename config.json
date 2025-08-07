@@ -20,7 +20,7 @@
   },
   "models": {
     "default_model": "gpt-4.1-mini",
-    "reasoner_model": "gpt-4.1"
+    "reasoner_model": "gpt-5-mini"
   },
   "security": {
     "require_powershell_confirmation": true,

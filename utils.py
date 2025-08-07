@@ -513,6 +513,39 @@ def read_local_file(file_path: str) -> str:
     # Use the path directly since it should already be normalized by normalize_path()
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
+# Deferred file context queue to hold file contexts waiting to be added
+_deferred_file_contexts: List[Tuple[str, str]] = []  # List of (file_path, content)
+
+
+def process_deferred_file_contexts(conversation_history: List[Dict[str, Any]]) -> None:
+    """
+    Process and add deferred file contexts when safe (i.e., no pending tool calls).
+    """
+    global _deferred_file_contexts
+
+    # Check for pending tool calls
+    pending_tool_calls = set()
+    for msg in reversed(conversation_history):
+        if msg.get("role") == "tool" and msg.get("tool_call_id"):
+            pending_tool_calls.discard(msg.get("tool_call_id"))
+        elif msg.get("role") == "assistant" and msg.get("tool_calls"):
+            for tc in msg["tool_calls"]:
+                pending_tool_calls.add(tc["id"])
+            break
+
+    if pending_tool_calls:
+        # Still have pending tool calls, do not process yet
+        return
+
+    # Process all deferred contexts
+    to_process = _deferred_file_contexts.copy()
+    _deferred_file_contexts.clear()
+
+    for file_path, content in to_process:
+        added = add_file_context_smartly(conversation_history, file_path, content)
+        if not added:
+            console.print(f"[yellow]⚠ Deferred file context '{file_path}' could not be added due to size or context limits.[/yellow]")
+
 
 def add_file_context_smartly(conversation_history: List[Dict[str, Any]], file_path: str, content: str, max_context_files: int = MAX_CONTEXT_FILES) -> bool:
     """
@@ -563,6 +596,7 @@ def add_file_context_smartly(conversation_history: List[Dict[str, Any]], file_pa
         # If there are still pending tool calls, defer file context addition
         if pending_tool_calls:
             console.print(f"[dim]Deferring file context addition for '{Path(file_path).name}' until {len(pending_tool_calls)} tool responses complete[/dim]")
+            _deferred_file_contexts.append((file_path, content))
             return True  # Return True but don't add yet
 
     # Remove any existing context for this exact file to avoid duplicates
@@ -641,6 +675,7 @@ def add_file_context_smartly(conversation_history: List[Dict[str, Any]], file_pa
     console.print(f"[dim]Added file context: {Path(file_path).name} ({content_size_kb:.1f}KB, ~{estimated_tokens} tokens)[/dim]")
 
     return True
+
 
 # =============================================================================
 # FUZZY MATCHING UTILITIES

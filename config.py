@@ -39,7 +39,8 @@ base_dir: Path = Path.cwd()
 # Git context state
 git_context: Dict[str, Any] = {
     'enabled': False,
-    'skip_staging': False,
+    'skip_staging': True,
+    'auto_staging_disabled': True,
     'branch': None
 }
 
@@ -101,7 +102,9 @@ AGGRESSIVE_TRUNCATION_THRESHOLD = conversation_config.get("aggressive_truncation
 # Model-specific context limits
 MODEL_CONTEXT_LIMITS = {
     "gpt-4.1-mini": 256000,  # gpt-4.1-mini has 128k context window
-    "gpt-4.1": 256000,  # gpt-4.1 has 128k context window    
+    "gpt-4.1": 256000,
+    "gpt-5-mini": 256000,
+    "gpt-5-2025-08-07": 256000,# gpt-4.1 has 128k context window    
 }
 
 def get_max_tokens_for_model(model_name: str) -> int:
@@ -110,7 +113,7 @@ def get_max_tokens_for_model(model_name: str) -> int:
 
 model_config = config.get("models", {})
 DEFAULT_MODEL = model_config.get("default_model", "gpt-4.1-mini")
-REASONER_MODEL = model_config.get("reasoner_model", "gpt-4.1")
+REASONER_MODEL = model_config.get("reasoner_model", "gpt-5-mini")
 
 security_config = config.get("security", {})
 DEFAULT_SECURITY_CONTEXT = {
