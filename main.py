@@ -34,7 +34,7 @@ from config import (
     ADD_COMMAND_PREFIX, COMMIT_COMMAND_PREFIX, GIT_BRANCH_COMMAND_PREFIX,
     FUZZY_AVAILABLE, DEFAULT_MODEL, REASONER_MODEL, tools, SYSTEM_PROMPT,
     MAX_FILES_IN_ADD_DIR, MAX_FILE_CONTENT_SIZE_CREATE, EXCLUDED_FILES, EXCLUDED_EXTENSIONS,
-    MAX_MULTIPLE_READ_SIZE
+    MAX_MULTIPLE_READ_SIZE, is_gpt5_model
 )
 from utils import (
     console, detect_available_shells, get_context_usage_info, smart_truncate_history,
@@ -1504,8 +1504,8 @@ def main_loop() -> None:
                             "content": msg["content"]
                         })
 
-                    # Use temperature only for non-reasoner models
-                    if current_model == REASONER_MODEL:
+                    # GPT-5 models don't support temperature/top_p parameters
+                    if is_gpt5_model(current_model):
                         response = client.responses.create(
                             model=current_model,
                             input=input_messages,
@@ -1612,8 +1612,8 @@ def main_loop() -> None:
                                 "content": msg["content"]
                             })
 
-                        # Use temperature only for non-reasoner models
-                        if current_model == REASONER_MODEL:
+                        # GPT-5 models don't support temperature/top_p parameters
+                        if is_gpt5_model(current_model):
                             continue_response = client.responses.create(
                                 model=current_model,
                                 input=input_messages,

@@ -104,16 +104,21 @@ MODEL_CONTEXT_LIMITS = {
     "gpt-4.1-mini": 256000,  # gpt-4.1-mini has 128k context window
     "gpt-4.1": 256000,
     "gpt-5-mini": 256000,
-    "gpt-5-2025-08-07": 256000,# gpt-4.1 has 128k context window    
+    "gpt-5": 256000,
+    "gpt-5-2025-08-07": 256000,# gpt-4.1 has 128k context window
 }
 
 def get_max_tokens_for_model(model_name: str) -> int:
     """Get the maximum context tokens for a specific model."""
     return MODEL_CONTEXT_LIMITS.get(model_name, 128000)  # Default to conservative limit
 
+def is_gpt5_model(model_name: str) -> bool:
+    """Check if the model is a GPT-5 series model that doesn't support temperature."""
+    return model_name.startswith("gpt-5") or model_name in ["gpt-5", "gpt-5-mini", "gpt-5-nano"]
+
 model_config = config.get("models", {})
-DEFAULT_MODEL = model_config.get("default_model", "gpt-4.1-mini")
-REASONER_MODEL = model_config.get("reasoner_model", "gpt-5-mini")
+DEFAULT_MODEL = model_config.get("default_model", "gpt-5-mini")
+REASONER_MODEL = model_config.get("reasoner_model", "gpt-5")
 
 security_config = config.get("security", {})
 DEFAULT_SECURITY_CONTEXT = {
