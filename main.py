@@ -610,6 +610,16 @@ def try_handle_reasoner_command(user_input: str) -> bool:
         return True
     return False
 
+def try_handle_agent_command(user_input: str) -> bool:
+    """Handle /agent command to enable gpt-5.1 model."""
+    if user_input.strip().lower() == "/agent":
+        model_context['current_model'] = "gpt-5.1"
+        model_context['is_reasoner'] = False
+        console.print(f"[green]✓ Switched to gpt-5.1 model 🤖[/green]")
+        console.print("[dim]All subsequent conversations will use the gpt-5.1 agent model.[/dim]")
+        return True
+    return False
+
 def try_handle_clear_command(user_input: str) -> bool:
     """Handle /clear command to clear screen."""
     if user_input.strip().lower() == "/clear":
@@ -765,6 +775,7 @@ def try_handle_help_command(user_input: str) -> bool:
         help_table.add_row("/help", "Show this help")
         help_table.add_row("/r", "Call Reasoner model for one-off reasoning tasks")
         help_table.add_row("/reasoner", "Toggle between chat and reasoner models")
+        help_table.add_row("/agent", "Switch to gpt-5.1 agent model")
         help_table.add_row("/clear", "Clear screen")
         help_table.add_row("/clear-context", "Clear conversation context")
         help_table.add_row("/context", "Show context usage statistics")
@@ -1367,7 +1378,34 @@ def execute_function_call_dict(tool_call_dict: Dict[str, Any]) -> str:
                 return f"Bash command executed successfully. No output produced (this is normal for commands like rm, mkdir, etc.)."
             else:
                 return f"Bash Output:\n{output}"
-        else: 
+        elif func_name == "ask_user":
+            question = args.get("question", "")
+            context = args.get("context", "")
+
+            if not question:
+                return "Error: Question cannot be empty."
+
+            try:
+                # Display context if provided
+                if context:
+                    console.print(f"\n[bold yellow]Context:[/bold yellow] {context}")
+
+                # Display the question with a special prompt
+                console.print(f"[bold bright_magenta]🤔 Horizon asks:[/bold bright_magenta] {question}")
+
+                # Get user input
+                user_response = prompt_session.prompt("🔵 Your answer: ").strip()
+
+                if not user_response:
+                    return "User provided no input (pressed Enter without typing)."
+
+                return f"User response: {user_response}"
+
+            except (KeyboardInterrupt, EOFError):
+                return "User cancelled the input (Ctrl+C or Ctrl+D)."
+            except Exception as e:
+                return f"Error getting user input: {e}"
+        else:
             return f"Unknown LLM function: {func_name}"
             
     except json.JSONDecodeError as e: 
@@ -1444,6 +1482,7 @@ def main_loop() -> None:
             if try_handle_git_info_command(user_input): continue
             if try_handle_r1_command(user_input, conversation_history): continue
             if try_handle_reasoner_command(user_input): continue
+            if try_handle_agent_command(user_input): continue
             if try_handle_clear_command(user_input): continue
             if try_handle_clear_context_command(user_input, conversation_history): continue
             if try_handle_context_command(user_input, conversation_history): continue

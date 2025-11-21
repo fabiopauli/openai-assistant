@@ -105,6 +105,7 @@ MODEL_CONTEXT_LIMITS = {
     "gpt-4.1": 256000,
     "gpt-5-mini": 256000,
     "gpt-5": 256000,
+    "gpt-5.1": 256000,
     "gpt-5-2025-08-07": 256000,# gpt-4.1 has 128k context window
 }
 
@@ -186,14 +187,17 @@ Core capabilities:
    - create_multiple_files: Create multiple files at once
    - edit_file: Make precise edits to existing files using fuzzy-matched snippet replacement
 
-3. Git Operations (via function calls):
+3. User Interaction (via function calls):
+   - ask_user: Ask the user for input, clarification, or confirmation during execution
+
+4. Git Operations (via function calls):
    - git_init: Initialize a new Git repository in the current directory.
    - git_add: Stage specified file(s) for the next commit. Use this before git_commit.
    - git_commit: Commit staged changes with a message. Ensure files are staged first using git_add.
    - git_create_branch: Create and switch to a new Git branch.
    - git_status: Show the current Git status, useful for seeing what is staged or unstaged.
 
-4. System Operations (with security confirmation):
+5. System Operations (with security confirmation):
    - run_powershell: Execute PowerShell commands (Windows/Cross-platform PowerShell Core)
    - run_bash: Execute bash commands (macOS/Linux/WSL)
    
@@ -204,25 +208,26 @@ Core capabilities:
 
 Guidelines:
 1. Provide natural, conversational responses explaining your reasoning
-2. Use function calls when you need to read or modify files, or interact with Git.
-3. For file operations:
+2. Use function calls when you need to read or modify files, interact with Git, or ask the user for input.
+3. When you need clarification, confirmation, or additional information from the user during task execution, use the ask_user function.
+4. For file operations:
    - The /add command and edit_file function now support fuzzy matching for more forgiving file operations
    - Always read files first before editing them to understand the context
    - The edit_file function will attempt fuzzy matching if exact snippets aren't found
    - Explain what changes you're making and why
    - Consider the impact of changes on the overall codebase
-4. For Git operations:
+5. For Git operations:
    - Use `git_add` to stage files before using `git_commit`.
    - Provide clear commit messages.
    - Check `git_status` if unsure about the state of the repository.
-5. For system commands:
+6. For system commands:
    - Always consider the operating system when choosing between run_bash and run_powershell
    - Explain what the command does before executing
    - Use safe, non-destructive commands when possible
    - Be cautious with commands that modify system state
-6. Follow language-specific best practices
-7. Suggest tests or validation steps when appropriate
-8. Be thorough in your analysis and recommendations
+7. Follow language-specific best practices
+8. Suggest tests or validation steps when appropriate
+9. Be thorough in your analysis and recommendations
 
 IMPORTANT: In your thinking process, if you realize that something requires a tool call, cut your thinking short and proceed directly to the tool call. Don't overthink - act efficiently when file operations are needed.
 
@@ -426,5 +431,24 @@ tools = [
             "additionalProperties": False
         },
         "strict": True
+    },
+    {
+        "type": "function",
+        "name": "ask_user",
+        "description": "Ask the user for input, clarification, or confirmation. Use this when you need additional information, want to confirm an action, or require user decision before proceeding.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "question": {
+                    "type": "string",
+                    "description": "The question or prompt to show the user"
+                },
+                "context": {
+                    "type": "string",
+                    "description": "Optional context or explanation about why you're asking (helps the user understand)"
+                }
+            },
+            "required": ["question"]
+        }
     }
 ]

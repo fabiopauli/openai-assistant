@@ -82,6 +82,7 @@ The assistant accepts commands prefixed by `/` or custom prefixes:
 | Command | Description |
 |---------|-------------|
 | `/reasoner` | Toggle between chat and reasoner models |
+| `/agent` | Switch to gpt-5.1 agent model |
 | `/r` | One-off reasoner call |
 
 ### Security
@@ -143,6 +144,7 @@ For more details, start the assistant and type `/help`.
 | Command | Description |
 |---------|-------------|
 | `/reasoner` | Toggle between chat and reasoner models |
+| `/agent` | Switch to gpt-5.1 agent model |
 | `/r` | Call the reasoner model for one-off reasoning tasks |
 
 ## Security

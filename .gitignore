@@ -35,6 +35,9 @@ coverage.xml
 .tests
 
 
+# Backups
+*.backup
+
 # Misc
 .DS_Store
 Thumbs.db
